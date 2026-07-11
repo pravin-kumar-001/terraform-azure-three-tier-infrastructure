@@ -3,6 +3,8 @@ Enterprise Azure Infrastructure Architecture – Technical Explanation
 This project follows a Production-Ready Enterprise Modular Infrastructure as Code (IaC) Architecture built on Microsoft Azure using Terraform Parent-Child Modules. The infrastructure is designed to be reusable, scalable, and environment-independent by maintaining separate configurations for Development and Production.
 
 1. Overall Architecture
+
+
                            Internet
                                │
                                ▼
@@ -18,6 +20,7 @@ This project follows a Production-Ready Enterprise Modular Infrastructure as Cod
                                              │
                                              ▼
                                      VM03 (Database)
+                           
 
 Administrative access
 
@@ -52,6 +55,7 @@ Root Module
 Each module is completely independent and reusable. The Root Module orchestrates the deployment by passing variables and module outputs between child modules.
 
 3. Network Topology
+
 Resource Group
        │
        ▼
@@ -90,6 +94,7 @@ Accepts connections only from the backend application
 This separation represents a standard Three-Tier Application Architecture.
 
 5. Traffic Flow
+
 Client
    │
    ▼
