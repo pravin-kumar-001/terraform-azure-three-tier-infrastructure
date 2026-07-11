@@ -1,303 +1,327 @@
-Enterprise Azure Infrastructure Architecture – Technical Explanation
+# Enterprise Azure Infrastructure Architecture – Technical Explanation
 
-This project follows a Production-Ready Enterprise Modular Infrastructure as Code (IaC) Architecture built on Microsoft Azure using Terraform Parent-Child Modules. The infrastructure is designed to be reusable, scalable, and environment-independent by maintaining separate configurations for Development and Production.
+## 1. Architecture Overview
 
-1. Overall Architecture
+This project follows a **Production-Ready Enterprise Infrastructure as Code (IaC) Architecture** built on Microsoft Azure using Terraform. The infrastructure is designed using a modular Parent-Child Module approach, where each Azure resource is implemented as an independent reusable Terraform module. The same modules are reused across Development and Production environments by supplying different configuration values through environment-specific Terraform variable files.
 
+The overall architecture follows a **Three-Tier Application Architecture**, consisting of a Presentation Layer (Frontend), Business Layer (Backend), and Data Layer (Database). Network security, scalability, and modularity have been considered throughout the infrastructure design.
 
-                           Internet
-                               │
-                               ▼
-                     Azure Public IP (Standard)
-                               │
-                               ▼
-                  Azure Application Gateway (L7)
-                               │
-                 ┌─────────────┴─────────────┐
-                 │                           │
-                 ▼                           ▼
-        VM01 (Frontend)              VM02 (Backend)
-                                             │
-                                             ▼
-                                     VM03 (Database)
-                           
+---
 
-Administrative access
+## 2. Infrastructure Components
 
-Administrator
-      │
-      ▼
-Azure Bastion
-      │
-      ▼
-Virtual Network
-      │
-      ▼
-SSH Access to Linux Virtual Machines
+The infrastructure consists of the following Azure services:
 
-2. Infrastructure Design Pattern
+* Resource Group
+* Storage Account (Terraform Remote Backend)
+* Virtual Network
+* Subnets
+* Public IP
+* Network Security Groups
+* Network Interfaces
+* Linux Virtual Machines
+* Azure Bastion
+* Azure Application Gateway
 
-The infrastructure follows a Modular Parent-Child Module Architecture.
+Each resource is deployed through its own Terraform module, making the infrastructure reusable and easier to maintain.
+
+---
+
+## 3. Infrastructure Design Pattern
+
+The infrastructure follows a Parent-Child Module Architecture.
 
 Root Module
-      │
-      ├── Resource Group Module
-      ├── Storage Account Module
-      ├── Virtual Network Module
-      ├── Subnet Module
-      ├── Public IP Module
-      ├── Network Interface Module
-      ├── Network Security Group Module
-      ├── NIC-NSG Association Module
-      ├── Linux Virtual Machine Module
-      ├── Azure Bastion Module
-      └── Azure Application Gateway Module
 
-Each module is completely independent and reusable. The Root Module orchestrates the deployment by passing variables and module outputs between child modules.
+↓
+Resource Group Module
 
-3. Network Topology
+↓
+Storage Account Module
 
-Resource Group
-       │
-       ▼
-Virtual Network
-       │
- ┌─────┼────────────────────────────┐
- │     │                            │
- ▼     ▼                            ▼
-VM Subnet                AzureBastionSubnet     ApplicationGatewaySubnet
+↓
+Virtual Network Module
 
-The Virtual Network contains dedicated subnets for:
+↓
+Subnet Module
 
-Virtual Machines
-Azure Bastion
-Azure Application Gateway
+↓
+Public IP Module
 
-This follows Azure networking best practices by isolating infrastructure components into separate subnets.
+↓
+Network Interface Module
 
-4. Compute Layer
+↓
+Network Security Group Module
+
+↓
+NIC-NSG Association Module
+
+↓
+Linux Virtual Machine Module
+
+↓
+Azure Bastion Module
+
+↓
+Azure Application Gateway Module
+
+The Root Module orchestrates the complete deployment by invoking child modules, passing variables, and consuming module outputs.
+
+---
+
+## 4. Network Topology
+
+The infrastructure is deployed inside a single Azure Virtual Network.
+
+The Virtual Network contains multiple dedicated subnets.
+
+* VM Subnet
+* AzureBastionSubnet
+* ApplicationGatewaySubnet
+
+Each subnet hosts a specific Azure service to maintain proper network segmentation and follow Azure networking best practices.
+
+---
+
+## 5. Compute Layer
 
 The compute layer consists of three Linux Virtual Machines.
 
-VM01
-Frontend Web Server
-Receives requests from Application Gateway
-Hosts the client-facing application
+### VM01 – Frontend Server
 
-VM02
-Backend Application Server
-Hosts REST APIs or business services
-Processes requests coming from the frontend
+The Frontend Virtual Machine hosts the web application that directly serves client requests. It receives incoming traffic from Azure Application Gateway over HTTP or HTTPS.
 
-VM03
-Database Server
-Hosts MySQL
-Accepts connections only from the backend application
+### VM02 – Backend Server
 
-This separation represents a standard Three-Tier Application Architecture.
+The Backend Virtual Machine hosts the application logic and REST APIs. Requests from the Frontend server are forwarded to the Backend server for processing.
 
-5. Traffic Flow
+### VM03 – Database Server
 
-Client
-   │
-   ▼
-Public IP
-   │
-   ▼
+The Database Virtual Machine hosts the MySQL database. It stores application data and accepts connections only from the Backend server. The database server is never exposed directly to the Internet.
+
+This separation represents a standard Enterprise Three-Tier Architecture.
+
+---
+
+## 6. Application Traffic Flow
+
+The client accesses the application through the public endpoint of Azure Application Gateway.
+
+Internet
+
+↓
+
+Azure Public IP
+
+↓
+
 Azure Application Gateway
-   │
-   ├────────► Frontend VM
-   │
-   └────────► Backend VM
-                     │
-                     ▼
-              Database VM
 
-Application Gateway acts as the single public entry point for the application.
+↓
 
-The Database VM is never exposed directly to the Internet.
+Frontend Virtual Machine
 
-6. Administrative Access
+↓
 
-Administrative connectivity follows Azure security best practices.
+Backend Virtual Machine
+
+↓
+
+Database Virtual Machine
+
+Azure Application Gateway acts as the single entry point to the application and distributes requests to the backend servers using private IP addresses.
+
+---
+
+## 7. Administrative Access
+
+Administrative access is secured using Azure Bastion.
 
 Administrator
-      │
-      ▼
+
+↓
+
 Azure Bastion
-      │
-      ▼
+
+↓
+
 Linux Virtual Machines
 
-No Virtual Machine is assigned a Public IP address.
+None of the Linux Virtual Machines are assigned a Public IP address.
 
-SSH connectivity is established only through Azure Bastion.
+All SSH connections are established through Azure Bastion, significantly reducing the attack surface and improving overall infrastructure security.
 
-This significantly reduces the attack surface.
+---
 
-7. Network Security
+## 8. Network Security
 
-Each Virtual Machine is protected by its own Network Security Group.
+Each Virtual Machine is protected by a dedicated Network Security Group.
 
-Frontend NSG
+### Frontend NSG
 
-Allows
+* SSH (22)
+* HTTP (80)
+* HTTPS (443)
 
-SSH (22)
-HTTP (80)
-HTTPS (443)
+### Backend NSG
 
-Backend NSG
+* SSH (22)
+* HTTP (80)
+* HTTPS (443)
 
-Allows
+### Database NSG
 
-SSH (22)
-HTTP (80)
-HTTPS (443)
+* SSH (22)
+* MySQL (3306)
 
-Database NSG
+The database server should ideally allow MySQL traffic only from the Backend server or Backend subnet instead of accepting traffic from all sources.
 
-Allows
-SSH (22)
-MySQL (3306)
+---
 
-Ideally, port 3306 should be restricted to the Backend VM or Backend Subnet instead of allowing access from all sources.
+## 9. Azure Application Gateway
 
-8. Application Delivery
+Azure Application Gateway is deployed as the Layer-7 Load Balancer.
 
-Azure Application Gateway provides
+Its responsibilities include:
 
-Layer-7 Load Balancing
-HTTP Routing
-Health Probes
-Backend Health Monitoring
-Request Routing
+* Receiving incoming client requests
+* Routing traffic to backend virtual machines
+* Performing health probes
+* Monitoring backend health
+* Forwarding requests only to healthy backend instances
 
-The backend pool dynamically receives private IP addresses from the deployed Linux Virtual Machines.
+The backend pool dynamically receives the private IP addresses of the Linux Virtual Machines through Terraform outputs instead of using hardcoded IP addresses.
 
-ip_addresses = [
+This design improves scalability and reduces manual configuration.
 
-  for vm_key in each.value.backend_vm_keys :
+---
 
-  var.linux_virtual_machines[vm_key].private_ip_address
+## 10. Azure Bastion
 
-]
+Azure Bastion provides secure browser-based SSH connectivity to Linux Virtual Machines.
 
-This eliminates hardcoded IP addresses and improves scalability.
+Key benefits include:
 
-9. Terraform Architecture
+* No Public IP required on Virtual Machines
+* Secure administrative access
+* Reduced attack surface
+* Centralized management access
 
-The project follows a reusable Terraform design.
+---
 
-Features include:
+## 11. Terraform Module Design
 
-Parent-Child Modules
-Reusable Modules
-for_each
-Nested Maps
-Dynamic Blocks
-Lookup Functions
-Ternary Operators
-Data Sources
-Module Outputs
-Module Dependencies
+The project is developed using reusable Terraform modules.
 
-This minimizes code duplication and allows new infrastructure to be provisioned by updating only the environment configuration.
+Key Terraform concepts used include:
 
-10. Environment Separation
+* Parent-Child Modules
+* Reusable Modules
+* for_each
+* Nested Maps
+* Dynamic Blocks
+* Lookup Functions
+* Ternary Operators
+* Module Outputs
+* Input Variables
+* Data Sources
+* Module Dependencies
 
-Separate environments are maintained.
+This design minimizes code duplication and improves maintainability.
+
+---
+
+## 12. Environment Separation
+
+The project maintains separate Development and Production environments.
 
 environments/
 
 ├── dev/
+
 └── prod/
 
-Each environment has its own
+Each environment contains its own:
 
-terraform.tfvars
-variables
-backend configuration
-deployment values
+* terraform.tfvars
+* variables
+* backend configuration
+* deployment parameters
 
-while sharing the same reusable modules.
+Both environments consume the same reusable Terraform modules.
 
-11. Infrastructure State Management
+---
 
-Terraform State is stored remotely in an Azure Storage Account.
+## 13. Terraform State Management
 
-Benefits include:
+Terraform state is stored remotely in an Azure Storage Account.
 
-Centralized state management
-State locking
-Team collaboration
-Version consistency
-Secure storage
-12. Dependency Management
+Advantages include:
 
-Deployment dependencies are handled using module outputs and explicit module dependencies.
+* Centralized state management
+* Team collaboration
+* State locking
+* Improved consistency
+* Secure remote storage
 
-Example:
+Remote state management enables multiple engineers to work on the same infrastructure without conflicts.
 
-module "application_gateway" {
+---
 
-  ...
+## 14. Dependency Management
 
-  depends_on = [
-    module.linux_virtual_machine,
-    module.public_ip,
-    module.subnet
-  ]
+Terraform module dependencies are managed using module outputs and explicit module dependencies.
 
-}
+For example, the Azure Application Gateway module depends on:
 
-This guarantees that dependent infrastructure components are created in the correct order.
+* Linux Virtual Machine Module
+* Public IP Module
+* Subnet Module
 
-13. Infrastructure Security
+This guarantees that dependent infrastructure resources are provisioned in the correct sequence during deployment.
 
-Security controls implemented include:
+---
 
-Azure Bastion for secure administrative access
-Dedicated Network Security Groups
-Private IP communication between internal resources
-No Public IP assigned to Virtual Machines
-Managed Identity for Linux Virtual Machines
-Common tagging strategy for governance and cost management
-14. Scalability
+## 15. Infrastructure Security
+
+The infrastructure implements several enterprise security practices.
+
+* Azure Bastion for secure administration
+* Dedicated Network Security Groups
+* Private IP communication between internal resources
+* No Public IP on Virtual Machines
+* System Assigned Managed Identity
+* Common tagging strategy
+* Network segmentation through dedicated subnets
+
+These controls improve the security posture of the overall environment.
+
+---
+
+## 16. Scalability
 
 The infrastructure is designed for horizontal scalability.
 
-Adding a new Virtual Machine typically requires only updating the environment configuration.
+Because every module uses reusable Terraform code with for_each, new infrastructure components can be added by updating only the environment configuration.
 
-Example:
+No modifications to the module source code are required.
 
-terraform.tfvars
+This significantly simplifies future infrastructure expansion.
 
-↓
+---
 
-Add VM Definition
+## 17. Architecture Classification
 
-↓
+From an enterprise cloud perspective, this infrastructure can be classified as:
 
-terraform plan
+* Production-Ready Azure Infrastructure
+* Three-Tier Enterprise Architecture
+* Modular Infrastructure as Code (IaC)
+* Parent-Child Terraform Module Architecture
+* Enterprise Azure Landing Zone–Aligned Infrastructure
+* Environment-Based Multi-Stage Deployment Architecture
+* Secure Azure Network Architecture
+* Scalable Cloud Infrastructure
 
-↓
-
-terraform apply
-
-No module code modifications are required because all resources are deployed using for_each.
-
-15. Architecture Classification
-
-From an enterprise infrastructure perspective, this solution can be classified as:
-
-Production-Ready Azure Infrastructure
-Three-Tier Enterprise Architecture
-Modular Infrastructure as Code (IaC)
-Reusable Parent-Child Terraform Module Architecture
-Enterprise Azure Landing Zone–Aligned Infrastructure (aligned with landing zone principles, though not a complete Azure Landing Zone implementation)
-Environment-Based Multi-Stage Deployment Architecture
-Secure Azure Network Architecture
-Scalable Cloud Infrastructure Design
-
-This architecture reflects common enterprise practices by emphasizing modularity, reusability, secure network segmentation, environment separation, and automated infrastructure provisioning through Terraform.
+Overall, this architecture follows enterprise cloud engineering principles by emphasizing modularity, reusability, automation, security, scalability, and environment isolation while leveraging Terraform as the Infrastructure as Code platform.
