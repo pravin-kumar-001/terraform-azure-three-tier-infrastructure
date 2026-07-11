@@ -34,6 +34,7 @@ Virtual Network
       │
       ▼
 SSH Access to Linux Virtual Machines
+
 2. Infrastructure Design Pattern
 
 The infrastructure follows a Modular Parent-Child Module Architecture.
@@ -82,10 +83,12 @@ VM01
 Frontend Web Server
 Receives requests from Application Gateway
 Hosts the client-facing application
+
 VM02
 Backend Application Server
 Hosts REST APIs or business services
 Processes requests coming from the frontend
+
 VM03
 Database Server
 Hosts MySQL
@@ -143,6 +146,7 @@ Allows
 SSH (22)
 HTTP (80)
 HTTPS (443)
+
 Backend NSG
 
 Allows
@@ -150,10 +154,10 @@ Allows
 SSH (22)
 HTTP (80)
 HTTPS (443)
+
 Database NSG
 
 Allows
-
 SSH (22)
 MySQL (3306)
 
